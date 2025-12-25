@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>입체도형 겉넓이 시각화</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f8fafc;
+        }
+        canvas {
+            border: 1px solid #e2e8f0;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .btn {
+            transition: all 0.2s;
+        }
+        .btn:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 text-gray-800">
+
+    <div class="max-w-4xl mx-auto space-y-12">
+        
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">입체도형의 겉넓이 원리</h1>
+            <p class="text-gray-600">입체도형의 겨냥도와 전개도 사이의 넓이 관계를 확인해 보세요.</p>
+        </header>
+
+        <!-- Cylinder Section -->
+        <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div class="flex flex-col md:flex-row items-center justify-between mb-4">
+                <h2 class="text-2xl font-bold text-indigo-600">1. 원기둥 (Cylinder)</h2>
+                <div class="space-x-2">
+                    <button id="btn-cylinder-unfold" class="btn px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg font-bold shadow">펼치기</button>
+                    <button id="btn-cylinder-fold" class="btn px-4 py-2 bg-slate-500 hover:bg-slate-600 text-white rounded-lg font-bold shadow">되돌리기</button>
+                </div>
+            </div>
+            <div class="flex justify-center">
+                <canvas id="canvas-cylinder" width="600" height="300"></canvas>
+            </div>
+        </section>
+
+        <!-- Cone Section -->
+        <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div class="flex flex-col md:flex-row items-center justify-between mb-4">
+                <h2 class="text-2xl font-bold text-orange-600">2. 원뿔 (Cone)</h2>
+                <div class="space-x-2">
+                    <button id="btn-cone-unfold" class="btn px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-bold shadow">펼치기</button>
+                    <button id="btn-cone-fold" class="btn px-4 py-2 bg-slate-500 hover:bg-slate-600 text-white rounded-lg font-bold shadow">되돌리기</button>
+                </div>
+            </div>
+            <div class="flex justify-center">
+                <canvas id="canvas-cone" width="600" height="350"></canvas>
+            </div>
+        </section>
+
+        <!-- Sphere Section -->
+        <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div class="flex flex-col md:flex-row items-center justify-between mb-4">
+                <h2 class="text-2xl font-bold text-orange-600">3. 구 (Sphere)</h2>
+                <div class="space-x-2">
+                    <button id="btn-sphere-unfold" class="btn px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-bold shadow">전개 과정 보기</button>
+                    <button id="btn-sphere-fold" class="btn px-4 py-2 bg-slate-500 hover:bg-slate-600 text-white rounded-lg font-bold shadow">되돌리기</button>
+                </div>
+            </div>
+            <div class="flex justify-center">
+                <canvas id="canvas-sphere" width="600" height="400"></canvas>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        function lerp(start, end, t) { return start * (1 - t) + end * t; }
+        function easeOutCubic(x) { return 1 - Math.pow(1 - x, 3); }
+
+        // --- Cylinder ---
+        class CylinderApp {
+            constructor(canvasId, unfoldBtnId, foldBtnId) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                this.r = 40; this.h = 100;
+                this.centerX = 300; this.centerY = 150;
+                this.unfoldP = 0; this.fillBaseP = 0; this.fillSideP = 0;
+                document.getElementById(unfoldBtnId).onclick = () => this.animate(true);
+                document.getElementById(foldBtnId).onclick = () => this.animate(false);
+                this.draw();
+            }
+            animate(unfold) {
+                const step = () => {
+                    this.draw();
+                    if (unfold) {
+                        if (this.unfoldP < 1) this.unfoldP += 0.02;
+                        else if (this.fillBaseP < 1) this.fillBaseP += 0.02;
+                        else if (this.fillSideP < 1) this.fillSideP += 0.02;
+                        else return;
+                    } else {
+                        if (this.fillSideP > 0) this.fillSideP -= 0.04;
+                        else if (this.fillBaseP > 0) this.fillBaseP -= 0.04;
+                        else if (this.unfoldP > 0) this.unfoldP -= 0.02;
+                        else return;
+                    }
+                    requestAnimationFrame(step);
+                };
+                step();
+            }
+            draw() {
+                const ctx = this.ctx; ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                const t = easeOutCubic(this.unfoldP);
+                const currentWidth = lerp(this.r * 2, 2 * Math.PI * this.r, t);
+                const rectY = this.centerY - this.h / 2;
+                const topCy = lerp(rectY, rectY - this.r, t);
+                const botCy = lerp(rectY + this.h, rectY + this.h + this.r, t);
+                const rectX = this.centerX - currentWidth / 2;
+                if (this.fillSideP > 0) {
+                    ctx.fillStyle = `rgba(236, 72, 153, ${this.fillSideP})`; ctx.fillRect(rectX, rectY, currentWidth, this.h);
+                }
+                ctx.strokeStyle = '#333'; ctx.lineWidth = 2;
+                if (t > 0.01) { ctx.strokeRect(rectX, rectY, currentWidth, this.h); if(t > 0.9 && this.fillSideP > 0.5) { ctx.fillStyle = "#333"; ctx.font = "bold 14px sans-serif"; ctx.textAlign = "center"; ctx.fillText("직사각형 넓이", this.centerX, rectY + this.h/2); } }
+                else { ctx.strokeRect(this.centerX-this.r, rectY, this.r*2, this.h); }
+                this.drawCircle(this.centerX, topCy, this.r, t < 0.5 ? 0.3 : 1, this.fillBaseP);
+                this.drawCircle(this.centerX, botCy, this.r, t < 0.5 ? 0.3 : 1, this.fillBaseP);
+            }
+            drawCircle(x, y, r, squash, fill) {
+                const ctx = this.ctx; ctx.save(); ctx.translate(x, y); ctx.scale(1, squash);
+                ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
+                if (fill > 0) { ctx.fillStyle = `rgba(139, 92, 246, ${fill})`; ctx.fill(); if(fill > 0.5) { ctx.save(); ctx.scale(1, 1/squash); ctx.fillStyle="#fff"; ctx.font="bold 12px sans-serif"; ctx.textAlign="center"; ctx.fillText("πr²", 0, 4); ctx.restore(); } }
+                else { ctx.fillStyle='rgba(255,255,255,0.8)'; ctx.fill(); }
+                ctx.strokeStyle = '#333'; ctx.lineWidth = 2/squash; ctx.stroke(); ctx.restore();
+            }
+        }
+
+        // --- Cone ---
+        class ConeApp {
+            constructor(canvasId, unfoldBtnId, foldBtnId) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                this.r = 45; this.h = 120; this.l = Math.sqrt(this.r*this.r + this.h*this.h);
+                this.centerX = 300; this.centerY = 220;
+                this.unfoldP = 0; this.fillSideP = 0; this.fillBaseP = 0;
+                document.getElementById(unfoldBtnId).onclick = () => this.animate(true);
+                document.getElementById(foldBtnId).onclick = () => this.animate(false);
+                this.draw();
+            }
+            animate(unfold) {
+                const step = () => {
+                    this.draw();
+                    if (unfold) {
+                        if (this.unfoldP < 1) this.unfoldP += 0.02;
+                        else if (this.fillSideP < 1) this.fillSideP += 0.02;
+                        else if (this.fillBaseP < 1) this.fillBaseP += 0.02;
+                        else return;
+                    } else {
+                        if (this.fillBaseP > 0) this.fillBaseP -= 0.04;
+                        else if (this.fillSideP > 0) this.fillSideP -= 0.04;
+                        else if (this.unfoldP > 0) this.unfoldP -= 0.02;
+                        else return;
+                    }
+                    requestAnimationFrame(step);
+                };
+                step();
+            }
+            draw() {
+                const ctx = this.ctx; ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                const t = easeOutCubic(this.unfoldP);
+                const currentTipY = lerp(this.centerY - this.h, 50, t);
+                const sectorAngle = 2 * Math.PI * (this.r / this.l);
+                ctx.save(); ctx.translate(this.centerX, currentTipY);
+                if (t < 0.4) { ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-this.r, this.h); ctx.lineTo(this.r, this.h); ctx.closePath(); ctx.strokeStyle = '#333'; ctx.stroke(); }
+                if (t > 0.01) {
+                    const curAngle = lerp(0, sectorAngle, t);
+                    ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,this.l, Math.PI/2-curAngle/2, Math.PI/2+curAngle/2); ctx.closePath();
+                    if (this.fillSideP > 0) { ctx.fillStyle = `rgba(249, 115, 22, ${this.fillSideP})`; ctx.fill(); if(this.fillSideP > 0.5) { ctx.fillStyle="#fff"; ctx.font="bold 16px sans-serif"; ctx.textAlign="center"; ctx.fillText("부채꼴 넓이", 0, this.l*0.6); } }
+                    ctx.strokeStyle = '#333'; ctx.stroke();
+                }
+                ctx.restore();
+                const curBaseY = lerp(this.centerY, currentTipY + this.l + this.r, t);
+                const curSquash = lerp(0.3, 1, t);
+                ctx.save(); ctx.translate(this.centerX, curBaseY); ctx.scale(1, curSquash);
+                ctx.beginPath(); ctx.arc(0, 0, this.r, 0, Math.PI*2);
+                if (this.fillBaseP > 0) { ctx.fillStyle=`rgba(34, 197, 94, ${this.fillBaseP})`; ctx.fill(); if(this.fillBaseP>0.5) { ctx.fillStyle="#fff"; ctx.font="bold 14px sans-serif"; ctx.textAlign="center"; ctx.fillText("πr²", 0, 4); } }
+                else { ctx.fillStyle='rgba(255,255,255,0.8)'; ctx.fill(); }
+                ctx.strokeStyle = '#333'; ctx.lineWidth = 2/curSquash; ctx.stroke(); ctx.restore();
+            }
+        }
+
+        // --- Sphere ---
+        class SphereApp {
+            constructor(canvasId, unfoldBtnId, foldBtnId) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                this.r = 70;
+                this.centerX = 300;
+                this.centerY = 200;
+                this.animP = 0; // Animation progress (0: sphere, 1: 4 circles)
+                
+                document.getElementById(unfoldBtnId).onclick = () => this.animate(true);
+                document.getElementById(foldBtnId).onclick = () => this.animate(false);
+                this.draw();
+            }
+
+            animate(toCircles) {
+                const step = () => {
+                    this.draw();
+                    if (toCircles) {
+                        if (this.animP < 1) {
+                            this.animP += 0.02;
+                            requestAnimationFrame(step);
+                        }
+                    } else {
+                        if (this.animP > 0) {
+                            this.animP -= 0.02;
+                            requestAnimationFrame(step);
+                        }
+                    }
+                };
+                step();
+            }
+
+            draw() {
+                const ctx = this.ctx;
+                ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                const t = easeOutCubic(this.animP);
+
+                // Draw 4 Circles (Fade in and move out)
+                if (t > 0) {
+                    const gap = 135;
+                    const targets = [
+                        this.centerX - gap * 1.5,
+                        this.centerX - gap * 0.5,
+                        this.centerX + gap * 0.5,
+                        this.centerX + gap * 1.5
+                    ];
+                    
+                    ctx.save();
+                    ctx.globalAlpha = t;
+                    targets.forEach(tx => {
+                        const curX = lerp(this.centerX, tx, t);
+                        ctx.beginPath(); ctx.arc(curX, this.centerY, this.r, 0, Math.PI * 2);
+                        ctx.fillStyle = "#f97316"; // Bright Orange
+                        ctx.fill();
+                        ctx.strokeStyle = "#c2410c"; ctx.lineWidth = 2; ctx.stroke();
+                        
+                        // Circle Label
+                        ctx.fillStyle = "white"; ctx.font = "bold 16px sans-serif"; ctx.textAlign = "center";
+                        ctx.fillText("πr²", curX, this.centerY + 6);
+                    });
+                    
+                    // Main Title
+                    if (t > 0.8) {
+                        ctx.globalAlpha = (t - 0.8) * 5;
+                        ctx.fillStyle = "#c2410c"; ctx.font = "bold 26px sans-serif"; ctx.textAlign = "center";
+                        ctx.fillText("구의 겉넓이 = 4πr²", this.centerX, 70);
+                    }
+                    ctx.restore();
+                }
+
+                // Draw the Sphere (Fade out)
+                if (t < 1) {
+                    ctx.save();
+                    ctx.globalAlpha = 1 - t;
+                    this.drawSphere(this.centerX, this.centerY, this.r);
+                    ctx.restore();
+                }
+            }
+
+            drawSphere(x, y, r) {
+                const ctx = this.ctx;
+                
+                // Sphere Gradient Fill for 3D look
+                const gradient = ctx.createRadialGradient(x - r*0.3, y - r*0.3, r*0.1, x, y, r);
+                gradient.addColorStop(0, "#cbd5e1"); // Highlight
+                gradient.addColorStop(1, "#64748b"); // Shadow
+                
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, Math.PI * 2);
+                ctx.fillStyle = gradient;
+                ctx.fill();
+                
+                // Outer Outline
+                ctx.strokeStyle = "#1e293b";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Meridians and Equator (The '3D' lines)
+                ctx.lineWidth = 1;
+                ctx.setLineDash([]);
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+                
+                // Vertical Meridian (Ellipse)
+                ctx.beginPath();
+                ctx.ellipse(x, y, r * 0.3, r, 0, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Horizontal Equator (Ellipse)
+                ctx.beginPath();
+                ctx.ellipse(x, y, r, r * 0.25, 0, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                // Axis labels (r)
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + r, y);
+                ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 2; ctx.stroke();
+                ctx.fillStyle = "#ef4444"; ctx.font = "italic bold 16px serif"; ctx.textAlign = "left";
+                ctx.fillText("r", x + r/2, y - 5);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            new CylinderApp('canvas-cylinder', 'btn-cylinder-unfold', 'btn-cylinder-fold');
+            new ConeApp('canvas-cone', 'btn-cone-unfold', 'btn-cone-fold');
+            new SphereApp('canvas-sphere', 'btn-sphere-unfold', 'btn-sphere-fold');
+        });
+    </script>
+</body>
+</html>
